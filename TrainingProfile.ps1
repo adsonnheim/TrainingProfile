@@ -10,6 +10,17 @@ Function Format-Name() {
     Return (($Name -split ' ', 2)[0].SubString(0, 1).ToUpper() + ($Name -split ' ', 2)[0].SubString(1, ($Name -split ' ', 2)[0].Length - 1).ToLower()) + " " + (($Name -split ' ', 2)[1].SubString(0, 1).ToUpper() + ($Name -split ' ', 2)[1].SubString(1, ($Name -split ' ', 2)[1].Length - 1).ToLower())
 }
 
+Function Read-Input() {
+    Param (
+        $Message
+    )
+
+    $FirstInput = ((Read-Host $Message) -replace '\s+', ' ').Trim()
+    $FirstUser = Format-Name($FirstInput)
+    
+    Return $FirstUser
+}
+
 $EnvFilePath = "./.env.local"
 
 If (-not (Test-Path $EnvFilePath -PathType Leaf)) {
@@ -45,13 +56,28 @@ While ($FirstUser -ne $SecondUser) {
         Write-Host "ERROR: Names do not match" -ForegroundColor Red
     }
 
-    $FirstInput = ((Read-Host "Enter the first and last name of the user you wish to create a training profile for") -replace '\s+', ' ').Trim()
-    $FirstUser = Format-Name($FirstInput)
+    $FirstUser = Read-Input("Enter the first and last name of the user you wish to create a training profile for")
 
-    $SecondInput = ((Read-Host "Re-type the first and last name of the user to verify") -replace '\s+', ' ').Trim()
-    $SecondUser = Format-Name($SecondInput)
+    While ($FirstUser -eq $False) {
+        Write-Host "ERROR: Must input both first name and last name" -ForegroundColor Red
+        $FirstUser = Read-Input("Enter the first and last name of the user you wish to create a training profile for")
+    }
+
+    $SecondUser = Read-Input("Re-type the first and last name of the user to verify")
+
+    While ($SecondUser -eq $False) {
+        Write-Host "ERROR: Must input both first name and last name" -ForegroundColor Red
+        $SecondUser = Read-Input("Re-type the first and last name of the user to verify")
+    }
 
     $Fails++
 }
 
-$FirstUser
+Connect-PnPOnline $Env["SHAREPOINT_URL"] -Interactive -ClientId $Env["CLIENT_ID"]
+
+$Title = ($FirstUser + ' Training Profile')
+$Alias = ($FirstUser -replace ' ', '') + "TrainingProfile"
+
+New-PnPSite -Type TeamSite -Title $Title -Alias $Alias
+
+Disconnect-PnPOnline -ClearPersistedLogin
