@@ -47,6 +47,8 @@ If (-not (Get-Module -ListAvailable -Name PnP.Powershell)) {
     Install-Module PnP.Powershell
 }
 
+Connect-PnPOnline $Env["SHAREPOINT_URL"] -Interactive -ClientId $Env["CLIENT_ID"]
+
 $FirstUser, $SecondUser, $Fails, $ValidName = "0", "1", 0, $False
 
 While (-not $ValidName) {
@@ -72,22 +74,39 @@ While (-not $ValidName) {
         $Fails++
     }
 
-    Connect-PnPOnline $Env["SHAREPOINT_URL"] -Interactive -ClientId $Env["CLIENT_ID"]
-
     $Title = ($FirstUser + ' Training Profile')
     $Alias = ($FirstUser -replace ' ', '') + "TrainingProfile"
+    $SiteURL = ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Alias)
+    $HubURL = ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Env["HUB_SITE"])
+    $Owners = $Env["OWNERS"] -split ','
 
     Try {
-        # Only as a variable to prevent console output
-        $SiteExists = Get-PnPTenantSite -Identity ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Alias) -ErrorAction Stop
+        # Variable to prevent console output
+        $SiteExists = Get-PnPTenantSite -Identity $SiteURL -ErrorAction Stop
         
-        Write-Host "ERROR: Site with name" ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Alias) "already exists" -ForegroundColor Red
+        Write-Host "ERROR: Site with name" $SiteURL "already exists" -ForegroundColor Red
         $ValidName = $False
         $FirstUser, $SecondUser = "0", "1"
         $Fails = 0
     } Catch {
-        Write-Host "Creating site" ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Alias)
-        #New-PnPSite -Type TeamSite -Title $Title -Alias $Alias
+        Write-Host "Creating site" $SiteURL
+        Try {
+            New-PnPSite -Type TeamSite -Title $Title -Alias $Alias -Description $Title -Owners $Owners
+        } Catch {
+            Write-Host "Site Created"
+        }
+        
+        $HubAssociated = $False
+        While (-not $HubAssociated) {
+            Try {
+                Add-PnPHubSiteAssociation -Site $SiteURL -HubSite $HubURL -ErrorAction Stop
+                $HubAssociated = $True
+            } Catch {
+                Write-Host "Retrying..."
+                Start-Sleep -Seconds 5
+            }
+        }
+
         $ValidName = $True
     }
 }
