@@ -47,37 +47,49 @@ If (-not (Get-Module -ListAvailable -Name PnP.Powershell)) {
     Install-Module PnP.Powershell
 }
 
-$FirstUser = "0"
-$SecondUser = "1"
-$Fails = 0
+$FirstUser, $SecondUser, $Fails, $ValidName = "0", "1", 0, $False
 
-While ($FirstUser -ne $SecondUser) {
-    If ($Fails -ne 0) {
-        Write-Host "ERROR: Names do not match" -ForegroundColor Red
-    }
+While (-not $ValidName) {
+    While ($FirstUser -ne $SecondUser) {
+        If ($Fails -ne 0) {
+            Write-Host "ERROR: Names do not match" -ForegroundColor Red
+        }
 
-    $FirstUser = Read-Input("Enter the first and last name of the user you wish to create a training profile for")
-
-    While ($FirstUser -eq $False) {
-        Write-Host "ERROR: Must input both first name and last name" -ForegroundColor Red
         $FirstUser = Read-Input("Enter the first and last name of the user you wish to create a training profile for")
-    }
 
-    $SecondUser = Read-Input("Re-type the first and last name of the user to verify")
+        While ($FirstUser -eq $False) {
+            Write-Host "ERROR: Must input both first name and last name" -ForegroundColor Red
+            $FirstUser = Read-Input("Enter the first and last name of the user you wish to create a training profile for")
+        }
 
-    While ($SecondUser -eq $False) {
-        Write-Host "ERROR: Must input both first name and last name" -ForegroundColor Red
         $SecondUser = Read-Input("Re-type the first and last name of the user to verify")
+
+        While ($SecondUser -eq $False) {
+            Write-Host "ERROR: Must input both first name and last name" -ForegroundColor Red
+            $SecondUser = Read-Input("Re-type the first and last name of the user to verify")
+        }
+
+        $Fails++
     }
 
-    $Fails++
+    Connect-PnPOnline $Env["SHAREPOINT_URL"] -Interactive -ClientId $Env["CLIENT_ID"]
+
+    $Title = ($FirstUser + ' Training Profile')
+    $Alias = ($FirstUser -replace ' ', '') + "TrainingProfile"
+
+    Try {
+        # Only as a variable to prevent console output
+        $SiteExists = Get-PnPTenantSite -Identity ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Alias) -ErrorAction Stop
+        
+        Write-Host "ERROR: Site with name" ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Alias) "already exists" -ForegroundColor Red
+        $ValidName = $False
+        $FirstUser, $SecondUser = "0", "1"
+        $Fails = 0
+    } Catch {
+        Write-Host "Creating site" ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Alias)
+        #New-PnPSite -Type TeamSite -Title $Title -Alias $Alias
+        $ValidName = $True
+    }
 }
-
-Connect-PnPOnline $Env["SHAREPOINT_URL"] -Interactive -ClientId $Env["CLIENT_ID"]
-
-$Title = ($FirstUser + ' Training Profile')
-$Alias = ($FirstUser -replace ' ', '') + "TrainingProfile"
-
-New-PnPSite -Type TeamSite -Title $Title -Alias $Alias
 
 Disconnect-PnPOnline -ClearPersistedLogin
