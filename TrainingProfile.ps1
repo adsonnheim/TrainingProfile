@@ -51,6 +51,8 @@ Connect-PnPOnline $Env["SHAREPOINT_URL"] -Interactive -ClientId $Env["CLIENT_ID"
 
 $FirstUser, $SecondUser, $Fails, $ValidName = "0", "1", 0, $False
 
+Read-Host "Press Ctrl + C to stop script..."
+
 While (-not $ValidName) {
     While ($FirstUser -ne $SecondUser) {
         If ($Fails -ne 0) {
@@ -79,7 +81,8 @@ While (-not $ValidName) {
     $SiteURL = ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Alias)
     $HubURL = ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Env["HUB_SITE"])
     $Owners = $Env["OWNERS"] -split ','
-
+    $Members = @(($FirstUser -split ' ')[0].ToLower() + "." + ($FirstUser -split ' ')[1].ToLower() + "@" + (($Env["OWNERS"] -split ',')[0] -split '@')[1])
+    
     Try {
         # Variable to prevent console output
         $SiteExists = Get-PnPTenantSite -Identity $SiteURL -ErrorAction Stop
@@ -91,7 +94,15 @@ While (-not $ValidName) {
     } Catch {
         Write-Host "Creating site" $SiteURL
         Try {
-            New-PnPSite -Type TeamSite -Title $Title -Alias $Alias -Description $Title -Owners $Owners
+            New-PnPSite -Type TeamSite -Title $Title -Alias $Alias -Description $Title -Members $Members
+
+            $Group = Get-PnPMicrosoft365Group | Where-Object { $_.MailNickname -eq $Alias }
+            ForEach ($Owner in $Owners) {
+                Add-PnPMicrosoft365GroupOwner -Identity $Group.Id -Users $Owner
+            }
+
+            #Remove-PnPMicrosoft365GroupOwner -Identity $Group.Id -Users "toberemoved"
+
         } Catch {
             Write-Host "Site Created"
         }
