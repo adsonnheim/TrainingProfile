@@ -49,9 +49,13 @@ If (-not (Get-Module -ListAvailable -Name PnP.Powershell)) {
 
 Connect-PnPOnline $Env["SHAREPOINT_URL"] -Interactive -ClientId $Env["CLIENT_ID"]
 
-$FirstUser, $SecondUser, $Fails, $ValidName = "0", "1", 0, $False
+(Get-PnPContext).ExecuteQuery()
 
-Read-Host "Press Ctrl + C to stop script..."
+$CurrentUser = ((Get-PnPProperty -ClientObject (Get-PnPWeb) -Property CurrentUser) | Select-Object -ExpandProperty LoginName).Split('|')[-1]
+
+Write-Host Get-PnPMicrosoft365Group | Where-Object { $_.DisplayName -eq $Title }
+
+$FirstUser, $SecondUser, $Fails, $ValidName = "0", "1", 0, $False
 
 While (-not $ValidName) {
     While ($FirstUser -ne $SecondUser) {
@@ -101,7 +105,7 @@ While (-not $ValidName) {
                 Add-PnPMicrosoft365GroupOwner -Identity $Group.Id -Users $Owner
             }
 
-            #Remove-PnPMicrosoft365GroupOwner -Identity $Group.Id -Users "toberemoved"
+            Remove-PnPMicrosoft365GroupOwner -Identity $Group.Id -Users $CurrentUser
 
         } Catch {
             Write-Host "Site Created"
