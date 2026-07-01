@@ -53,8 +53,6 @@ Connect-PnPOnline $Env["SHAREPOINT_URL"] -Interactive -ClientId $Env["CLIENT_ID"
 
 $CurrentUser = ((Get-PnPProperty -ClientObject (Get-PnPWeb) -Property CurrentUser) | Select-Object -ExpandProperty LoginName).Split('|')[-1]
 
-Write-Host Get-PnPMicrosoft365Group | Where-Object { $_.DisplayName -eq $Title }
-
 $FirstUser, $SecondUser, $Fails, $ValidName = "0", "1", 0, $False
 
 While (-not $ValidName) {
@@ -86,6 +84,9 @@ While (-not $ValidName) {
     $HubURL = ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Env["HUB_SITE"])
     $Owners = $Env["OWNERS"] -split ','
     $Members = @(($FirstUser -split ' ')[0].ToLower() + "." + ($FirstUser -split ' ')[1].ToLower() + "@" + (($Env["OWNERS"] -split ',')[0] -split '@')[1])
+    $ObjectID = "0c98a400-fc1e-4a1a-9ea2-7d07a44f7e38"
+    $LoginName = ($Alias + "@" + $Env["ALIAS"]).ToLower()
+    $Group = Get-PnPMicrosoft365Group | Where-Object { $_.MailNickname -eq $Alias }
     
     Try {
         # Variable to prevent console output
@@ -96,7 +97,6 @@ While (-not $ValidName) {
         $FirstUser, $SecondUser = "0", "1"
         $Fails = 0
     } Catch {
-        Write-Host "Creating site" $SiteURL
         Try {
             New-PnPSite -Type TeamSite -Title $Title -Alias $Alias -Description $Title -Members $Members
 
@@ -104,6 +104,19 @@ While (-not $ValidName) {
             ForEach ($Owner in $Owners) {
                 Add-PnPMicrosoft365GroupOwner -Identity $Group.Id -Users $Owner
             }
+
+            $LoginName = "c:0o.c|federateddirectoryclaimprovider|$($Group.Id)"
+
+            Connect-PnPOnline $SiteURL -Interactive -ClientId $Env["CLIENT_ID"] -TenantAdminUrl ("https://" + $Env["SHAREPOINT_ADMIN_URL"])
+
+            Try {
+                Remove-PnPGroupMember -LoginName $LoginName -Group 5 -ErrorAction Stop
+            } Catch {
+                Write-Host "Removing site member failed!" -ForegroundColor Red
+            }
+            
+            Add-PnPGroupMember -LoginName "c:0t.c|tenant|$ObjectId" -Identity "Site Members"
+            Connect-PnPOnline $Env["SHAREPOINT_URL"] -Interactive -ClientId $Env["CLIENT_ID"]
 
             Remove-PnPMicrosoft365GroupOwner -Identity $Group.Id -Users $CurrentUser
 
