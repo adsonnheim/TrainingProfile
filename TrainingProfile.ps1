@@ -89,8 +89,7 @@ While (-not $ValidName) {
     $Group = Get-PnPMicrosoft365Group | Where-Object { $_.MailNickname -eq $Alias }
     
     Try {
-        # Variable to prevent console output
-        $SiteExists = Get-PnPTenantSite -Identity $SiteURL -ErrorAction Stop
+        Get-PnPTenantSite -Identity $SiteURL -ErrorAction Stop > $Null
         
         Write-Host "ERROR: Site with name" $SiteURL "already exists" -ForegroundColor Red
         $ValidName = $False
@@ -134,6 +133,13 @@ While (-not $ValidName) {
                 Start-Sleep -Seconds 5
             }
         }
+
+        Connect-PnPOnline $HubURL -Interactive -ClientId $Env["CLIENT_ID"]
+        Add-PnPListItem -List "Training Profiles" -Values @{
+            "Title" = $Title
+            "field_1" = $SiteURL
+            "ClassroomOneDrive" = $Env["ONEDRIVE"]
+        } > $Null
 
         $ValidName = $True
     }
