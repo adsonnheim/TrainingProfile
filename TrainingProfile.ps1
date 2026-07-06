@@ -84,7 +84,7 @@ While (-not $ValidName) {
     $HubURL = ("https://" + $Env["SHAREPOINT_URL"] + "/sites/" + $Env["HUB_SITE"])
     $Owners = $Env["OWNERS"] -split ','
     $Members = @(($FirstUser -split ' ')[0].ToLower() + "." + ($FirstUser -split ' ')[1].ToLower() + "@" + (($Env["OWNERS"] -split ',')[0] -split '@')[1])
-    $ObjectID = "0c98a400-fc1e-4a1a-9ea2-7d07a44f7e38"
+    $ObjectID = $Env["OBJECT_ID"]
     $LoginName = ($Alias + "@" + $Env["ALIAS"]).ToLower()
     $Group = Get-PnPMicrosoft365Group | Where-Object { $_.MailNickname -eq $Alias }
     
