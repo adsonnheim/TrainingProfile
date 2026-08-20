@@ -108,6 +108,8 @@ While (-not $ValidName) {
 
             Connect-PnPOnline $SiteURL -Interactive -ClientId $Env["CLIENT_ID"] -TenantAdminUrl ("https://" + $Env["SHAREPOINT_ADMIN_URL"])
 
+            Set-PnPMicrosoft365Group -Identity $Group.Id -HideFromOutlookClients $True
+
             Try {
                 Remove-PnPGroupMember -LoginName $LoginName -Group 5 -ErrorAction Stop
             } Catch {
